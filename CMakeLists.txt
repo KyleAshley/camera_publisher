@@ -5,6 +5,7 @@ project(camera_publisher)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
+		 cmake_modules REQUIRED
 	     rospy	
 	     roscpp
 	     cv_bridge
@@ -19,7 +20,10 @@ find_package(catkin REQUIRED
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(Boost REQUIRED )
+find_package(OpenCV REQUIRED)
+find_package(PCL 1.7 REQUIRED)
+find_package(Eigen REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -107,10 +111,10 @@ find_package(catkin REQUIRED
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES camera_publisher
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+  INCLUDE_DIRS include
+  # LIBRARIES 
+  CATKIN_DEPENDS roscpp rospy std_msgs pcl_msgs pcl_conversions pcl_ros cv_bridge image_transport tf
+  DEPENDS system_lib Eigen tf_conversions
 )
 
 ###########
@@ -120,6 +124,17 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
+add_definitions(${PCL_DEFINITIONS})
+
+set(STEREO_INCLUDE_DIR /include)
+
+include_directories(include)
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+  ${STEREO_INCLUDE_DIR}
+  ${PCL_INCLUDE_DIRS}
+  ${Eigen_INCLUDE_DIRS}
+)
 
 ## Declare a C++ library
 # add_library(camera_publisher
@@ -132,7 +147,7 @@ catkin_package(
 # add_dependencies(camera_publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(camera_publisher_node src/camera_publisher_node.cpp)
+add_executable(stereo_publisher src/stereo_publisher.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -142,6 +157,15 @@ catkin_package(
 # target_link_libraries(camera_publisher_node
 #   ${catkin_LIBRARIES}
 # )
+
+target_link_libraries(stereo_publisher
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBS}
+   ${PCL_LIBRARIES}
+)
+
+
+
 
 #############
 ## Install ##

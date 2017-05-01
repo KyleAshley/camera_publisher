@@ -1,7 +1,0 @@
-<launch>
-	
-	<!-- Launch the camera nodes -->
-	<node pkg="camera_publisher" type="camera_publisher.py" name="camera_0" args="camera_0 0" output="screen"/>
-	<node pkg="camera_publisher" type="camera_publisher.py" name="camera_1" args="camera_1 1" output="screen"/>
-
-</launch>
