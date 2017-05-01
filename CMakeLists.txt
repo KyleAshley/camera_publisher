@@ -6,6 +6,15 @@ project(camera_publisher)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
 	     rospy	
+	     roscpp
+	     cv_bridge
+	     pcl_ros
+	     pcl_conversions
+	     pcl_msgs
+	     image_transport
+	     std_msgs
+	     tf_conversions
+	     tf
  	     dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
