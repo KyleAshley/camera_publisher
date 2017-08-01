@@ -19,6 +19,7 @@ class camera_publisher():
 
 		self.device = device 		# device ID
 		self.enable = True
+		self.visualize = False		# enable image stream visualization
 
 		self.name = name
 
@@ -46,8 +47,9 @@ class camera_publisher():
 					if success:
 						img_msg = self.bridge.cv2_to_imgmsg(self.image, "bgr8")
 						self.rgb_pub.publish(img_msg)
-						cv2.imshow(self.name, self.image)
-						cv2.waitKey(10)
+						if self.visualize:
+							cv2.imshow(self.name, self.image)
+							cv2.waitKey(10)
 
 
 
