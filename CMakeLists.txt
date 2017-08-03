@@ -98,7 +98,7 @@ find_package(Eigen REQUIRED)
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
   generate_dynamic_reconfigure_options(
     cfg/camera_params.cfg
-#   cfg/DynReconf2.cfg
+    cfg/stereo_params.cfg
  )
 
 ###################################

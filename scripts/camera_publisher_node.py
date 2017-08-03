@@ -19,9 +19,9 @@ class camera_publisher():
 
 		self.device = device 		# device ID
 		self.enable = True
-		self.visualize = False		# enable image stream visualization
+		self.visualize = True		# enable image stream visualization
 
-		self.name = name
+		self.name = name 			# camera name ex: camera_0
 
 		# setup the ROS publisher for images
 		rate = rospy.Rate(self.rate)
@@ -61,9 +61,9 @@ class camera_publisher():
 			self.enable = enable
 
 			if self.enable:
-				rospy.loginfo('Camera is on with device ID: ' + str(self.device))
+				rospy.loginfo('Enable: Camera is on with device ID: ' + str(self.device))
 			else:
-				rospy.loginfo('Camera is off with device ID: ' + str(self.device))
+				rospy.loginfo('Enable: Camera is off with device ID: ' + str(self.device))
 
 	def resolutionCb(self, msg):
 		data = msg.data
@@ -93,7 +93,7 @@ class camera_publisher():
 		else:
 			rospy.loginfo("Invalid resolution format: Use the form <width>x<height> or <width> <height>")
 		
-
+	# set the refresh rate of the camera
 	def rateCb(self, msg):
 		data = msg.data
 		if data < 0 or data > MAX_RATE:
@@ -105,19 +105,19 @@ class camera_publisher():
 				rospy.loginfo("Setting rate to: "+str(self.rate))
 				self.stream.set(cv2.CAP_PROP_FPS, self.rate)
 
+	# set the usb device ID
 	def deviceCb(self, msg):
 		data = msg.data
 		if self.device != data:
-			if self.enable:
-				self.enable = False
+
+			# open stream on new device
 			self.stream.open(data)
 			self.device = data
 
 			if self.stream.isOpened():
-				rospy.loginfo('Camera is on with device ID: ' + str(self.device))
+				rospy.loginfo('Change Device: Camera is on with device ID: ' + str(self.device))
 			else:
-				rospy.loginfo('Camera is off with device ID: ' + str(self.device))
-
+				rospy.loginfo('Change Device: Camera is off with device ID: ' + str(self.device))
 
 if __name__ == "__main__":
 
