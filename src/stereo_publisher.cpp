@@ -111,40 +111,89 @@ void stereoPublisher::publishDisparity(Mat disp)
 // set SGBM properties when the GUI changes
 void stereoPublisher::reconfigure_callback(camera_publisher::stereo_paramsConfig &config, uint32_t level) {
 			
-			if(config.mode == 0)
-				this->mode = StereoSGBM::MODE_SGBM;
-			else
-				this->mode = StereoSGBM::MODE_HH;
+			if(config.mode != this->mode)
+			{
+				if(config.mode == 0)
+					this->mode = StereoSGBM::MODE_SGBM;
+				else
+					this->mode = StereoSGBM::MODE_HH;
+				this->updateSGBM = true;
+			}
 
-			this->minDisparities = config.minDisparities;
+			if(config.minDisparities != this->minDisparities)
+			{
+				this->minDisparities = config.minDisparities;
+				this->updateSGBM = true;
+			}
 
 			// make the disparities factors of 16
-			if((config.maxDisparities % 16) != 0)
+			if(config.maxDisparities != this->maxDisparities)
 			{
-				int val = config.maxDisparities % 16;
-				this->maxDisparities = config.maxDisparities - val;
+				if((config.maxDisparities % 16) != 0)
+				{
+					int val = config.maxDisparities % 16;
+					this->maxDisparities = config.maxDisparities - val;
+				}
+				else if (config.maxDisparities <= 0)
+					this->maxDisparities = 16;
+				else
+					this->maxDisparities = config.maxDisparities;
+
+				this->updateSGBM = true;
 			}
-			else if (config.maxDisparities <= 0)
-				this->maxDisparities = 16;
-			else
-				this->maxDisparities = config.maxDisparities;
 
-			// make the blocksize odd
-			if(config.blockSize % 2 == 0)
-				this->blockSize = config.blockSize + 1;
-			else
-				this->blockSize = config.blockSize;
+			if(config.blockSize != this->blockSize)
+			{
+				// make the blocksize odd
+				if(config.blockSize % 2 == 0)
+					this->blockSize = config.blockSize + 1;
+				else
+					this->blockSize = config.blockSize;
+
+				this->updateSGBM = true;
+			}
 			
-			this->P1 = config.P1;
-			this->P2 = config.P2;
-			this->disp12MaxDiff = config.disp12MaxDiff;
-			this->preFilterCap = config.preFilterCap;
-			this->uniquenessRatio = config.uniquenessRatio;
-			this->speckleWindowSize = config.speckleWindowSize;
-			this->speckleRange = config.speckleRange;
-			this->updateSGBM = true;
+			if(config.P1 != this->P1)
+			{
+				this->updateSGBM = true;
+				this->P1 = config.P1;
+			}
+			if(config.P2 != this->P2)
+			{
+				this->updateSGBM = true;
+				this->P2 = config.P2;
+			}
+			
+			if(config.disp12MaxDiff != this->disp12MaxDiff)
+			{
+				this->updateSGBM = true;
+				this->disp12MaxDiff = config.disp12MaxDiff;
+			}
 
-			cout << this->maxDisparities << endl;
+			if(config.preFilterCap != this->preFilterCap)
+			{
+				this->updateSGBM = true;
+				this->preFilterCap = config.preFilterCap;
+			}
+
+			if(config.uniquenessRatio != this->uniquenessRatio)
+			{
+				this->updateSGBM = true;
+				this->uniquenessRatio = config.uniquenessRatio;
+			}
+
+			if(config.speckleWindowSize != this->speckleWindowSize)
+			{
+				this->updateSGBM = true;
+				this->speckleWindowSize = config.speckleWindowSize;
+			}
+
+			if(config.speckleRange != this->speckleRange)
+			{
+				this->updateSGBM = true;
+				this->speckleRange = config.speckleRange;
+			}
+			
 }
 
 void stereoPublisher::cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg)
@@ -238,6 +287,7 @@ Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 										 this->blockSize, this->P1, this->P2, this->disp12MaxDiff, 
 										 this->preFilterCap, this->uniquenessRatio, 
 										 this->speckleRange, this->mode );
+		this->updateSGBM = false;
 	}
 
 	// check to make sure there are valid images for L and R camera
@@ -259,7 +309,6 @@ Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 		//-- Display it as a CV_8UC1 image
 		img_disparity16S.convertTo( img_disparity8U, CV_8UC1, 255/(maxVal - minVal));
 
-		cout << "Done!" << endl;
 		if(visualize)
 		{
 			namedWindow( "disparity", WINDOW_NORMAL );
@@ -347,6 +396,8 @@ void stereoPublisher::printCalibration()
 Mat stereoPublisher::computeDepth(bool visualize)
 {	
 	// reprojectImageTo3D
+	Mat x;
+	return x;
 }
 
 
