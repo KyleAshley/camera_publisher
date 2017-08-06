@@ -11,9 +11,9 @@ class dashboard():
 	def __init__(self):
 
 		# nested dictionary of camera parameters adjustable through dynreconf gui
-		self.cam_params = ['enable', 'refresh_rate', 'device_id', 'img_res']
-		params0 = {'enable':False, 'refresh_rate':30, 'device_id':0, 'img_res':"1920x1080"}
-		params1 = {'enable':False, 'refresh_rate':30, 'device_id':1, 'img_res':"1920x1080"}
+		self.cam_params = ['enable', 'refresh_rate', 'device_id', 'img_resolution']
+		params0 = {'enable':False, 'refresh_rate':30, 'device_id':0, 'img_resolution':"1920x1080"}
+		params1 = {'enable':False, 'refresh_rate':30, 'device_id':1, 'img_resolution':"1920x1080"}
 		self.cameras = {'camera_0':params0, 'camera_1':params1}
 
 
@@ -27,18 +27,18 @@ class dashboard():
 		self.camera_0_device_id_pub = rospy.Publisher('camera_0/device_id', Int32, queue_size=1)
 		self.camera_1_device_id_pub = rospy.Publisher('camera_1/device_id', Int32, queue_size=1)
 
-		self.camera_0_img_res_pub = rospy.Publisher('camera_0/img_res', String, queue_size=1)
-		self.camera_1_img_res_pub = rospy.Publisher('camera_1/img_res', String, queue_size=1)
+		self.camera_0_img_res_pub = rospy.Publisher('camera_0/image_resolution', String, queue_size=1)
+		self.camera_1_img_res_pub = rospy.Publisher('camera_1/image_resolution', String, queue_size=1)
 
 		publishers0 = {'enable':self.camera_0_enable_pub, \
 					   'refresh_rate':self.camera_0_refresh_rate_pub, \
 					   'device_id':self.camera_0_device_id_pub, \
-					   'img_res':self.camera_0_img_res_pub, \
+					   'image_resolution':self.camera_0_img_res_pub, \
 					   }
 		publishers1 = {'enable':self.camera_1_enable_pub, \
 					   'refresh_rate':self.camera_1_refresh_rate_pub, \
 					   'device_id':self.camera_1_device_id_pub, \
-					   'img_res':self.camera_1_img_res_pub, \
+					   'image_resolution':self.camera_1_img_res_pub, \
 					   }
 		self.camera_publishers = {'camera_0':publishers0, 'camera_1':publishers1}
 

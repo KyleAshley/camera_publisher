@@ -16,7 +16,9 @@ find_package(catkin REQUIRED
 	     std_msgs
 	     tf_conversions
 	     tf
- 	     dynamic_reconfigure)
+ 	     dynamic_reconfigure
+	     message_generation 			
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -55,11 +57,10 @@ find_package(Eigen REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+ add_message_files(
+   FILES
+   stereoExtrinsics.msg
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -76,10 +77,10 @@ find_package(Eigen REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -113,7 +114,7 @@ find_package(Eigen REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
   # LIBRARIES 
-  CATKIN_DEPENDS roscpp rospy std_msgs pcl_msgs pcl_conversions pcl_ros cv_bridge image_transport tf
+  CATKIN_DEPENDS roscpp rospy std_msgs pcl_msgs pcl_conversions pcl_ros cv_bridge image_transport tf message_runtime
   DEPENDS system_lib Eigen tf_conversions
 )
 
@@ -148,6 +149,7 @@ include_directories(
 
 ## Declare a C++ executable
 add_executable(stereo_publisher src/stereo_publisher.cpp)
+add_executable(stereo_calib src/stereo_calib.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -159,6 +161,12 @@ add_executable(stereo_publisher src/stereo_publisher.cpp)
 # )
 
 target_link_libraries(stereo_publisher
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBS}
+   ${PCL_LIBRARIES}
+)
+
+target_link_libraries(stereo_calib
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
    ${PCL_LIBRARIES}

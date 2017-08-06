@@ -33,12 +33,12 @@ class camera_publisher():
 		if not self.stream.isOpened():
 			rospy.loginfo("No camera found for device ID: "+ str(self.device))
 
-		self.rgb_pub = rospy.Publisher(self.name+'/image_rgb', Image, queue_size=10)
+		self.rgb_pub = rospy.Publisher(self.name+'/image_raw', Image, queue_size=10)
 
 		self.enable_sub = rospy.Subscriber(self.name+'/enable', Bool, self.enableCb)
 		self.rate_sub = rospy.Subscriber(self.name+'/refresh_rate', Int32, self.rateCb)
 		self.id_sub = rospy.Subscriber(self.name+'/device_id', Int32, self.deviceCb)
-		self.resolution_sub = rospy.Subscriber(self.name+'/img_res', String, self.resolutionCb)
+		self.resolution_sub = rospy.Subscriber(self.name+'/image_resolution', String, self.resolutionCb)
 
 		while not rospy.is_shutdown():
 			if self.enable:

@@ -3,15 +3,29 @@
 using namespace cv;
 using namespace std;
 
+/*
+// Calibration
+// rosrun camera_calibration cameracalibrator.py --size 8x6 --square 0.0025 right:=/camera_0/image_raw left:=/camera_1/image_raw right_camera:=/stereo/right left_camera:=/stereo/left --no-service-check
+*/
 
 // constructor just subscribes to image topics
 stereoPublisher::stereoPublisher(): _it(_nh)
 {
-	 this->_left_image_sub = _it.subscribe("/camera_0/image_rgb", 1,
-      										&stereoPublisher::leftImageCb, this);
-	 this->_right_image_sub = _it.subscribe("/camera_1/image_rgb", 1,
-      										&stereoPublisher::rightImageCb, this);
-	 this->_disparity_pub = _it.advertise("/stereo_publisher/disparity", 1);
+	// subscribers
+	 this->_left_image_sub = _it.subscribe("/camera_0/image_raw", 1,
+      										&stereoPublisher::imageLeftCb, this);
+	 this->_right_image_sub = _it.subscribe("/camera_1/image_raw", 1,
+      										&stereoPublisher::imageRightCb, this);
+	 this->_left_info_sub = _nh.subscribe("/camera_0/camera_info", 1,
+      										&stereoPublisher::cameraInfoLeftCb, this);
+	 this->_right_info_sub = _nh.subscribe("/camera_1/camera_info", 1,
+      										&stereoPublisher::cameraInfoRightCb, this);
+	 this->_extrinsics_sub = _nh.subscribe("/stereo/stereo_extrinsics_info", 1,
+      										&stereoPublisher::stereoExtrinsicsCb, this);
+	 // publishers
+	 this->_disparity_pub = _it.advertise("/stereo/disparity", 1);
+
+	 
 
 	 // sgbm parameters
 	this->mode = StereoSGBM::MODE_SGBM;
@@ -27,20 +41,25 @@ stereoPublisher::stereoPublisher(): _it(_nh)
 	this->speckleWindowSize = 100;
 	this->speckleRange = 1;
 	this->updateSGBM = false;
-	
+
+	// indicates if camera_info topic is published for the cameras
+	this->isCalibratedLeft = false;
+	this->isCalibratedRight = false;
+	this->haveExtrinsics = false;
 	
 
 	this->sgbm = StereoSGBM::create( this->minDisparities, this->maxDisparities, 
 									 this->blockSize, this->P1, this->P2, 
 									 this->preFilterCap, this->uniquenessRatio, 
 									 this->speckleRange, this->mode );
+
 }
 
 stereoPublisher::~stereoPublisher()
 {	
 }
 
-void stereoPublisher::leftImageCb(const sensor_msgs::ImageConstPtr& msg)
+void stereoPublisher::imageLeftCb(const sensor_msgs::ImageConstPtr& msg)
 {
 	//cout << "Left CB" << endl;
  	cv_bridge::CvImagePtr cv_ptr;
@@ -61,7 +80,7 @@ void stereoPublisher::leftImageCb(const sensor_msgs::ImageConstPtr& msg)
 	cv::waitKey(3);
 }
 
-void stereoPublisher::rightImageCb(const sensor_msgs::ImageConstPtr& msg)
+void stereoPublisher::imageRightCb(const sensor_msgs::ImageConstPtr& msg)
 {
 	//cout << "Left CB" << endl;
 	cv_bridge::CvImagePtr cv_ptr;
@@ -128,6 +147,82 @@ void stereoPublisher::reconfigure_callback(camera_publisher::stereo_paramsConfig
 			cout << this->maxDisparities << endl;
 }
 
+void stereoPublisher::cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg)
+{
+// store the calibration parameters for the right camera
+	this->calib_left.D = Mat::zeros(1,5, CV_64F);
+	this->calib_left.K = Mat::zeros(3,3, CV_64F);
+	this->calib_left.R = Mat::zeros(3,3, CV_64F);
+	this->calib_left.P = Mat::zeros(3,4, CV_64F);
+
+	for(int i=0; i<5; i++)
+		this->calib_left.D.at<double>(i) = msg.D[i];
+	for(int i=0; i<9; i++)
+		this->calib_left.K.at<double>(i/3,i%3) = msg.K[i];
+	for(int i=0; i<9; i++)
+		this->calib_left.R.at<double>(i/3,i%3) = msg.R[i];
+	for(int i=0; i<12; i++)
+		this->calib_left.P.at<double>(i/4,i%4) = msg.P[i];
+
+	// make sure there is valid data on the calibration topic
+	if ( true
+	   )
+	{
+		cout << "Calibrated Left camera" << endl;
+		this->isCalibratedLeft = true;
+	}
+}		
+
+void stereoPublisher::cameraInfoRightCb(const sensor_msgs::CameraInfo& msg)
+{
+	// store the calibration parameters for the right camera
+	this->calib_right.D = Mat::zeros(1,5, CV_64F);
+	this->calib_right.K = Mat::zeros(3,3, CV_64F);
+	this->calib_right.R = Mat::zeros(3,3, CV_64F);
+	this->calib_right.P = Mat::zeros(3,4, CV_64F);
+
+	for(int i=0; i<5; i++)
+		this->calib_right.D.at<double>(i) = msg.D[i];
+	for(int i=0; i<9; i++)
+		this->calib_right.K.at<double>(i/3,i%3) = msg.K[i];
+	for(int i=0; i<9; i++)
+		this->calib_right.R.at<double>(i/3,i%3) = msg.R[i];
+	for(int i=0; i<12; i++)
+		this->calib_right.P.at<double>(i/4,i%4) = msg.P[i];
+
+	// make sure there is valid data on the calibration topic
+	if ( true
+	   )
+	{
+		cout << "Calibrated Right camera" << endl;
+		this->isCalibratedRight = true;
+	}
+}	
+
+
+void stereoPublisher::stereoExtrinsicsCb(const camera_publisher::stereoExtrinsics& msg)
+{
+	// store the calibration parameters for the right camera
+	this->stereo_extrinsics.R = Mat::zeros(3,3, CV_64F);
+	this->stereo_extrinsics.T = Mat::zeros(1,3, CV_64F);
+	this->stereo_extrinsics.Q = Mat::zeros(4,4, CV_64F);
+
+	for(int i=0; i<9; i++)
+		this->stereo_extrinsics.R.at<double>(i/3,i%3) = msg.R[i];
+	for(int i=0; i<3; i++)
+		this->stereo_extrinsics.T.at<double>(0, i) = msg.T[i];
+	for(int i=0; i<16; i++)
+		this->stereo_extrinsics.Q.at<double>(i/4,i%4) = msg.Q[i];
+
+	if(true)
+	{
+		this->haveExtrinsics = true;
+		cout << "Confirmed Stereo Extrinsics" << endl;
+	}
+	// make sure there is valid data on the calibration topic
+
+}	
+
 // given a left and right images from the camera, computes and returns the disparity map
 Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 {
@@ -138,6 +233,7 @@ Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 	//-- Call the constructor for SGBM
 	if(this->updateSGBM)
 	{
+		cout << "Updating the stereo matching algorithm" << endl;
 		this->sgbm = StereoSGBM::create( this->minDisparities, this->maxDisparities, 
 										 this->blockSize, this->P1, this->P2, this->disp12MaxDiff, 
 										 this->preFilterCap, this->uniquenessRatio, 
@@ -163,6 +259,7 @@ Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 		//-- Display it as a CV_8UC1 image
 		img_disparity16S.convertTo( img_disparity8U, CV_8UC1, 255/(maxVal - minVal));
 
+		cout << "Done!" << endl;
 		if(visualize)
 		{
 			namedWindow( "disparity", WINDOW_NORMAL );
@@ -170,6 +267,86 @@ Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 		}
 		return img_disparity8U;
 	}	
+}
+
+
+
+void stereoPublisher::printCalibration()
+{
+	cout <<  "--------------------------------------------" << endl;
+	cout << "LEFT" << endl;
+	cout <<  "--------------------------------------------" << endl;
+
+	for(int i=0; i<calib_left.D.size().width; i++)
+		for(int j=0; j<calib_left.D.size().height; j++)
+			cout << calib_left.D.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<calib_left.K.size().width; i++)
+		for(int j=0; j<calib_left.K.size().height; j++)
+			cout << calib_left.K.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<calib_left.R.size().width; i++)
+		for(int j=0; j<calib_left.R.size().height; j++)
+			cout << calib_left.R.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<calib_left.P.size().width; i++)
+		for(int j=0; j<calib_left.P.size().height; j++)
+			cout << calib_left.P.at<double>(i,j) << " ";
+		cout << endl;
+
+	cout <<  "--------------------------------------------" << endl;
+	cout << "RIGHT" << endl;
+	cout <<  "--------------------------------------------" << endl;
+
+	for(int i=0; i<calib_right.D.size().width; i++)
+		for(int j=0; j<calib_right.D.size().height; j++)
+			cout << calib_right.D.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<calib_right.K.size().width; i++)
+		for(int j=0; j<calib_right.K.size().height; j++)
+			cout << calib_right.K.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<calib_right.R.size().width; i++)
+		for(int j=0; j<calib_right.R.size().height; j++)
+			cout << calib_right.R.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<calib_right.P.size().width; i++)
+		for(int j=0; j<calib_right.P.size().height; j++)
+			cout << calib_right.P.at<double>(i,j) << " ";
+		cout << endl;
+
+	cout <<  "--------------------------------------------" << endl;
+	cout << "EXTRINSICS" << endl;
+	cout <<  "--------------------------------------------" << endl;
+
+	for(int i=0; i<stereo_extrinsics.R.size().width; i++)
+		for(int j=0; j<stereo_extrinsics.R.size().height; j++)
+			cout << stereo_extrinsics.R.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<stereo_extrinsics.T.size().width; i++)
+		for(int j=0; j<stereo_extrinsics.T.size().height; j++)
+			cout << stereo_extrinsics.T.at<double>(i,j) << " ";
+		cout << endl;
+
+	for(int i=0; i<stereo_extrinsics.Q.size().width; i++)
+		for(int j=0; j<stereo_extrinsics.Q.size().height; j++)
+			cout << stereo_extrinsics.Q.at<double>(i,j) << " ";
+		cout << endl;
+
+		
+}
+
+
+Mat stereoPublisher::computeDepth(bool visualize)
+{	
+	// reprojectImageTo3D
 }
 
 
@@ -186,20 +363,25 @@ int main(int argc, char** argv)
 
 	f = boost::bind(&stereoPublisher::reconfigure_callback, &sp, _1, _2);
 	server.setCallback(f);
-
+	
+	std::cout << "--(!) Stereo Publisher: waiting for images to come up..." << std::endl;
 	while (sp.img_left_gray.empty() || sp.img_right_gray.empty() )
 	{ 
-		std::cout << "--(!) Stereo Publisher: waiting for images to come up..." << std::endl;
 		waitKey(1000);
 		ros::spinOnce();
 	}
 
+	sp.printCalibration();
+
 	std::cout << "Starting depth calculation!" << std::endl;
 	while (waitKey(10) != 27)
 	{
-		// calculate the disparity map
+
 		sp.img_disparity8U = sp.computeDisparity(sp.img_left_gray, sp.img_right_gray, true);
 		sp.publishDisparity(sp.img_disparity8U);
+
+		sp.computeDepth(false);
+		
 
 		ros::spinOnce();
 	}
