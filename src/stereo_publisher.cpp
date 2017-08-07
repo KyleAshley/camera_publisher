@@ -9,23 +9,23 @@ using namespace std;
 */
 
 // constructor just subscribes to image topics
-stereoPublisher::stereoPublisher(): _it(_nh)
+stereoPublisher::stereoPublisher(): _it(_nh), cloud(new PCloud)
 {
 	// subscribers
-	 this->_left_image_sub = _it.subscribe("/camera_0/image_raw", 1,
-      										&stereoPublisher::imageLeftCb, this);
-	 this->_right_image_sub = _it.subscribe("/camera_1/image_raw", 1,
-      										&stereoPublisher::imageRightCb, this);
-	 this->_left_info_sub = _nh.subscribe("/camera_0/camera_info", 1,
-      										&stereoPublisher::cameraInfoLeftCb, this);
-	 this->_right_info_sub = _nh.subscribe("/camera_1/camera_info", 1,
-      										&stereoPublisher::cameraInfoRightCb, this);
-	 this->_extrinsics_sub = _nh.subscribe("/stereo/stereo_extrinsics_info", 1,
-      										&stereoPublisher::stereoExtrinsicsCb, this);
-	 // publishers
-	 this->_disparity_pub = _it.advertise("/stereo/disparity", 1);
+	this->_left_image_sub = _it.subscribe("/camera_0/image_raw", 1,
+											&stereoPublisher::imageLeftCb, this);
+	this->_right_image_sub = _it.subscribe("/camera_1/image_raw", 1,
+											&stereoPublisher::imageRightCb, this);
+	this->_left_info_sub = _nh.subscribe("/camera_0/camera_info", 1,
+											&stereoPublisher::cameraInfoLeftCb, this);
+	this->_right_info_sub = _nh.subscribe("/camera_1/camera_info", 1,
+											&stereoPublisher::cameraInfoRightCb, this);
+	this->_extrinsics_sub = _nh.subscribe("/stereo/stereo_extrinsics_info", 1,
+											&stereoPublisher::stereoExtrinsicsCb, this);
+	// publishers
+	this->_disparity_pub = _it.advertise("/stereo/disparity", 1);
+	this->_point_cloud_pub = _nh.advertise<PCloud> ("/stereo/points", 1);
 
-	 
 
 	 // sgbm parameters
 	this->mode = StereoSGBM::MODE_SGBM;
@@ -217,7 +217,7 @@ void stereoPublisher::cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg)
 	if ( true
 	   )
 	{
-		cout << "Calibrated Left camera" << endl;
+		//cout << "Calibrated Left camera" << endl;
 		this->isCalibratedLeft = true;
 	}
 }		
@@ -243,7 +243,7 @@ void stereoPublisher::cameraInfoRightCb(const sensor_msgs::CameraInfo& msg)
 	if ( true
 	   )
 	{
-		cout << "Calibrated Right camera" << endl;
+		//cout << "Calibrated Right camera" << endl;
 		this->isCalibratedRight = true;
 	}
 }	
@@ -266,7 +266,7 @@ void stereoPublisher::stereoExtrinsicsCb(const camera_publisher::stereoExtrinsic
 	if(true)
 	{
 		this->haveExtrinsics = true;
-		cout << "Confirmed Stereo Extrinsics" << endl;
+		//cout << "Confirmed Stereo Extrinsics" << endl;
 	}
 	// make sure there is valid data on the calibration topic
 
@@ -393,11 +393,67 @@ void stereoPublisher::printCalibration()
 }
 
 
+// http://www.pcl-users.org/Conversion-from-cv-Mat-to-pcl-PointCloud-td4023936.html
+void stereoPublisher::createPointcloudFromRegisteredDepthImage(cv::Mat& depthImage, cv::Mat& rgbImage, Mat& intrinsics)
+{
+    float rgbFocalInvertedX = 1/intrinsics.at<double>(0,0);	// 1/fx
+	float rgbFocalInvertedY = 1/intrinsics.at<double>(1,1);	// 1/fy
+
+	PCloud::Ptr outputPointcloud(new PCloud);
+	pcl::PointXYZRGB newPoint;
+	for (int i=0;i<depthImage.rows;i++)
+	{
+		for (int j=0;j<depthImage.cols;j++)
+		{
+			float depthValue = depthImage.at<Vec3f>(i,j)[2]/1000.;
+
+			if (depthValue == depthValue)                // if depthValue is not NaN
+			{
+				// Find 3D position respect to rgb frame:
+				newPoint.z = depthValue;
+				newPoint.x = ((j - intrinsics.at<double>(0,2)) * newPoint.z * rgbFocalInvertedX);
+				newPoint.y = ((i - intrinsics.at<double>(1,2)) * newPoint.z * rgbFocalInvertedY);
+				newPoint.r = rgbImage.at<cv::Vec3b>(i,j)[2];
+				newPoint.g = rgbImage.at<cv::Vec3b>(i,j)[1];
+				newPoint.b = rgbImage.at<cv::Vec3b>(i,j)[0];
+				outputPointcloud->push_back(newPoint);
+			}
+			else
+			{
+				newPoint.z = std::numeric_limits<float>::quiet_NaN();
+				newPoint.x = std::numeric_limits<float>::quiet_NaN();
+				newPoint.y = std::numeric_limits<float>::quiet_NaN();
+				newPoint.r = std::numeric_limits<unsigned char>::quiet_NaN();
+				newPoint.g = std::numeric_limits<unsigned char>::quiet_NaN();
+				newPoint.b = std::numeric_limits<unsigned char>::quiet_NaN();
+				outputPointcloud->push_back(newPoint);
+			}
+		}
+	}
+	
+	outputPointcloud->header.frame_id = "/base";
+	outputPointcloud->height = 480;
+	outputPointcloud->width = 640;
+	pcl_conversions::toPCL(ros::Time::now(), outputPointcloud->header.stamp);
+	this->_point_cloud_pub.publish (outputPointcloud);
+
+}
+
+
 Mat stereoPublisher::computeDepth(bool visualize)
 {	
 	// reprojectImageTo3D
-	Mat x;
-	return x;
+
+	this->img_depth = Mat::zeros(img_disparity8U.size(), CV_32FC3);
+
+	cout << "Calculating depth" << endl;
+	reprojectImageTo3D(this->img_disparity8U, this->img_depth, this->stereo_extrinsics.Q, true);
+	cout << "Done" << endl;
+	
+	this->cloud->clear();
+	createPointcloudFromRegisteredDepthImage(this->img_depth, this->img_left, this->calib_left.K);
+
+	return img_depth;
 }
 
 
@@ -431,7 +487,7 @@ int main(int argc, char** argv)
 		sp.img_disparity8U = sp.computeDisparity(sp.img_left_gray, sp.img_right_gray, true);
 		sp.publishDisparity(sp.img_disparity8U);
 
-		sp.computeDepth(false);
+		sp.img_depth = sp.computeDepth(true);
 		
 
 		ros::spinOnce();

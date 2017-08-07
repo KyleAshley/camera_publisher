@@ -10,6 +10,11 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl_conversions/pcl_conversions.h>
+
 #include <dynamic_reconfigure/server.h>
 #include <camera_publisher/stereo_paramsConfig.h>
 #include <camera_publisher/stereoExtrinsics.h>
@@ -36,7 +41,7 @@ struct stereoExtrinsics {
      cv::Mat Q;   	// 4x4 disparity to depth
 };
 
-
+typedef pcl::PointCloud<pcl::PointXYZRGB> PCloud;
 
 class stereoPublisher
 {
@@ -51,6 +56,7 @@ class stereoPublisher
 
 		// pubs
 		image_transport::Publisher _disparity_pub;
+		ros::Publisher _point_cloud_pub;
 
 	public:
 		stereoPublisher();
@@ -59,6 +65,7 @@ class stereoPublisher
 		cv::Mat img_left, img_right, img_left_gray, img_right_gray;
 		cv::Mat img_disparity8U;
 		cv::Mat img_depth;
+		PCloud::Ptr cloud;
 
 		calibrationData calib_left, calib_right;
 		stereoExtrinsics stereo_extrinsics;
@@ -92,6 +99,8 @@ class stereoPublisher
 
 		// ROS publishers for the results
 		void publishDisparity(cv::Mat disp);
+
+		void createPointcloudFromRegisteredDepthImage(cv::Mat& depthImage, cv::Mat& rgbImage, cv::Mat& intrinsics);
 		cv::Mat computeDisparity(cv::Mat l_img, cv::Mat r_img, bool visualize);
 
 		// calibration
