@@ -405,14 +405,18 @@ void stereoPublisher::createPointcloudFromRegisteredDepthImage(cv::Mat& depthIma
 	{
 		for (int j=0;j<depthImage.cols;j++)
 		{
-			float depthValue = depthImage.at<Vec3f>(i,j)[2]/1000.;
+			float depthValue = depthImage.at<Vec3f>(i,j)[2]/10.;
+			float xValue = depthImage.at<Vec3f>(i,j)[0]/10.;
+			float yValue = depthImage.at<Vec3f>(i,j)[1]/10.;
 
 			if (depthValue == depthValue)                // if depthValue is not NaN
 			{
 				// Find 3D position respect to rgb frame:
 				newPoint.z = depthValue;
-				newPoint.x = ((j - intrinsics.at<double>(0,2)) * newPoint.z * rgbFocalInvertedX);
-				newPoint.y = ((i - intrinsics.at<double>(1,2)) * newPoint.z * rgbFocalInvertedY);
+				newPoint.x = xValue;
+				newPoint.y = yValue;
+				//newPoint.x = ((j - intrinsics.at<double>(0,2)) * newPoint.z * rgbFocalInvertedX);
+				//newPoint.y = ((i - intrinsics.at<double>(1,2)) * newPoint.z * rgbFocalInvertedY);
 				newPoint.r = rgbImage.at<cv::Vec3b>(i,j)[2];
 				newPoint.g = rgbImage.at<cv::Vec3b>(i,j)[1];
 				newPoint.b = rgbImage.at<cv::Vec3b>(i,j)[0];
