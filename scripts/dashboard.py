@@ -12,35 +12,35 @@ class dashboard():
 
 		# nested dictionary of camera parameters adjustable through dynreconf gui
 		self.cam_params = ['enable', 'refresh_rate', 'device_id', 'img_resolution']
-		params0 = {'enable':False, 'refresh_rate':30, 'device_id':0, 'img_resolution':"1920x1080"}
-		params1 = {'enable':False, 'refresh_rate':30, 'device_id':1, 'img_resolution':"1920x1080"}
-		self.cameras = {'camera_0':params0, 'camera_1':params1}
+		paramsLeft = {'enable':False, 'refresh_rate':30, 'device_id':0, 'img_resolution':"1920x1080"}
+		paramsRight = {'enable':False, 'refresh_rate':30, 'device_id':1, 'img_resolution':"1920x1080"}
+		self.cameras = {'camera_left':paramsLeft, 'camera_right':paramsRight}
 
 
 		# ROS messaging
-		self.camera_0_enable_pub = rospy.Publisher('camera_0/enable', Bool, queue_size=1)
-		self.camera_1_enable_pub = rospy.Publisher('camera_1/enable', Bool, queue_size=1)
+		self.camera_left_enable_pub = rospy.Publisher('camera_left/enable', Bool, queue_size=1)
+		self.camera_right_enable_pub = rospy.Publisher('camera_right/enable', Bool, queue_size=1)
 
-		self.camera_0_refresh_rate_pub = rospy.Publisher('camera_0/refresh_rate', Int32, queue_size=1)
-		self.camera_1_refresh_rate_pub = rospy.Publisher('camera_1/refresh_rate', Int32, queue_size=1)
+		self.camera_left_refresh_rate_pub = rospy.Publisher('camera_left/refresh_rate', Int32, queue_size=1)
+		self.camera_right_refresh_rate_pub = rospy.Publisher('camera_right/refresh_rate', Int32, queue_size=1)
 
-		self.camera_0_device_id_pub = rospy.Publisher('camera_0/device_id', Int32, queue_size=1)
-		self.camera_1_device_id_pub = rospy.Publisher('camera_1/device_id', Int32, queue_size=1)
+		self.camera_left_device_id_pub = rospy.Publisher('camera_left/device_id', Int32, queue_size=1)
+		self.camera_right_device_id_pub = rospy.Publisher('camera_right/device_id', Int32, queue_size=1)
 
-		self.camera_0_img_res_pub = rospy.Publisher('camera_0/image_resolution', String, queue_size=1)
-		self.camera_1_img_res_pub = rospy.Publisher('camera_1/image_resolution', String, queue_size=1)
+		self.camera_left_img_res_pub = rospy.Publisher('camera_left/image_resolution', String, queue_size=1)
+		self.camera_right_img_res_pub = rospy.Publisher('camera_right/image_resolution', String, queue_size=1)
 
-		publishers0 = {'enable':self.camera_0_enable_pub, \
-					   'refresh_rate':self.camera_0_refresh_rate_pub, \
-					   'device_id':self.camera_0_device_id_pub, \
-					   'image_resolution':self.camera_0_img_res_pub, \
+		publishers0 = {'enable':self.camera_left_enable_pub, \
+					   'refresh_rate':self.camera_left_refresh_rate_pub, \
+					   'device_id':self.camera_left_device_id_pub, \
+					   'image_resolution':self.camera_left_img_res_pub, \
 					   }
-		publishers1 = {'enable':self.camera_1_enable_pub, \
-					   'refresh_rate':self.camera_1_refresh_rate_pub, \
-					   'device_id':self.camera_1_device_id_pub, \
-					   'image_resolution':self.camera_1_img_res_pub, \
+		publishers1 = {'enable':self.camera_right_enable_pub, \
+					   'refresh_rate':self.camera_right_refresh_rate_pub, \
+					   'device_id':self.camera_right_device_id_pub, \
+					   'image_resolution':self.camera_right_img_res_pub, \
 					   }
-		self.camera_publishers = {'camera_0':publishers0, 'camera_1':publishers1}
+		self.camera_publishers = {'camera_left':publishers0, 'camera_right':publishers1}
 
 		# setup the callback for the reconfigure server
 		self.server = DynamicReconfigureServer(camera_paramsConfig, self.reconfigure)

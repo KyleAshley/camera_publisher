@@ -5,20 +5,20 @@ using namespace std;
 
 /*
 // Calibration
-// rosrun camera_calibration cameracalibrator.py --size 8x6 --square 0.0025 right:=/camera_0/image_raw left:=/camera_1/image_raw right_camera:=/stereo/right left_camera:=/stereo/left --no-service-check
+// rosrun camera_calibration cameracalibrator.py --size 8x6 --square 0.0025 right:=/camera_left/image_raw left:=/camera_right/image_raw right_camera:=/stereo/right left_camera:=/stereo/left --no-service-check
 */
 
 // constructor just subscribes to image topics
 stereoPublisher::stereoPublisher(): _it(_nh), cloud(new PCloud)
 {
 	// subscribers
-	this->_left_image_sub = _it.subscribe("/camera_0/image_raw", 1,
+	this->_left_image_sub = _it.subscribe("/camera_left/image_raw", 1,
 											&stereoPublisher::imageLeftCb, this);
-	this->_right_image_sub = _it.subscribe("/camera_1/image_raw", 1,
+	this->_right_image_sub = _it.subscribe("/camera_right/image_raw", 1,
 											&stereoPublisher::imageRightCb, this);
-	this->_left_info_sub = _nh.subscribe("/camera_0/camera_info", 1,
+	this->_left_info_sub = _nh.subscribe("/camera_left/camera_info", 1,
 											&stereoPublisher::cameraInfoLeftCb, this);
-	this->_right_info_sub = _nh.subscribe("/camera_1/camera_info", 1,
+	this->_right_info_sub = _nh.subscribe("/camera_right/camera_info", 1,
 											&stereoPublisher::cameraInfoRightCb, this);
 	this->_extrinsics_sub = _nh.subscribe("/stereo/stereo_extrinsics_info", 1,
 											&stereoPublisher::stereoExtrinsicsCb, this);
