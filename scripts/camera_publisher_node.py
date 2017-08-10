@@ -19,7 +19,7 @@ class camera_publisher():
 
 		self.device = device 		# device ID
 		self.enable = True
-		self.visualize = True		# enable image stream visualization
+		self.visualize = False		# enable image stream visualization
 
 		self.name = name 			# camera name ex: camera_0
 
@@ -50,6 +50,8 @@ class camera_publisher():
 						if self.visualize:
 							cv2.imshow(self.name, self.image)
 							cv2.waitKey(10)
+					else:
+						pass
 
 
 
@@ -59,6 +61,11 @@ class camera_publisher():
 
 		if self.enable != enable:
 			self.enable = enable
+
+			if self.enable:
+				self.stream.open(self.device)
+			else:
+				self.stream.release()
 
 			if self.enable:
 				rospy.loginfo('Enable: Camera is on with device ID: ' + str(self.device))
@@ -111,7 +118,7 @@ class camera_publisher():
 		if self.device != data:
 
 			# open stream on new device
-			self.stream.open(data)
+			#self.stream.open(data)
 			self.device = data
 
 			if self.stream.isOpened():

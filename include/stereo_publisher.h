@@ -9,6 +9,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "opencv2/ximgproc/disparity_filter.hpp"
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
@@ -22,6 +23,12 @@
 #include <stdio.h>
 #include <math.h>
 #include <vector>
+
+using namespace cv;
+using namespace std;
+using namespace cv::ximgproc;
+
+
 /*
 Stereo Publisher Class:
 	- subscribes to left and right RGB image topics
@@ -63,7 +70,15 @@ class stereoPublisher
 		~stereoPublisher();
 
 		cv::Mat img_left, img_right, img_left_gray, img_right_gray;
-		cv::Mat img_disparity8U;
+		cv::Mat img_disparity8U_L, img_disparity8U_R, img_disparity_filtered, img_filtered_disp_vis;
+		cv::Ptr<DisparityWLSFilter> wls_filter; 	// wls filter for post processing disparity
+		float lambda, sigma;
+
+
+		// two separate stereo matchers for the left and right images (to perform filtering)
+		cv::Ptr<StereoMatcher> right_sgbm, left_sgbm;
+		
+
 		cv::Mat img_depth;
 		PCloud::Ptr cloud;
 
@@ -75,7 +90,6 @@ class stereoPublisher
 		cv::Mat lr_viz;
 
 		// sgbm parameters
-		cv::Ptr<cv::StereoSGBM> sgbm;
 		int minDisparities;
 		int maxDisparities;
 		int blockSize;

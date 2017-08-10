@@ -1,7 +1,5 @@
 #include "stereo_publisher.h"
 
-using namespace cv;
-using namespace std;
 
 /*
 // Calibration
@@ -27,8 +25,10 @@ stereoPublisher::stereoPublisher(): _it(_nh), cloud(new PCloud)
 	this->_point_cloud_pub = _nh.advertise<PCloud> ("/stereo/points", 1);
 
 
+
 	 // sgbm parameters
-	this->mode = StereoSGBM::MODE_SGBM;
+	//this->mode = StereoSGBM::MODE_SGBM;
+	this->mode = StereoSGBM::MODE_SGBM_3WAY;
 	//this->mode = StereoSGBM::MODE_HH;
 
 	this->minDisparities = 0;
@@ -48,10 +48,15 @@ stereoPublisher::stereoPublisher(): _it(_nh), cloud(new PCloud)
 	this->haveExtrinsics = false;
 	
 
-	this->sgbm = StereoSGBM::create( this->minDisparities, this->maxDisparities, 
+	this->left_sgbm = StereoSGBM::create( this->minDisparities, this->maxDisparities, 
 									 this->blockSize, this->P1, this->P2, 
 									 this->preFilterCap, this->uniquenessRatio, 
 									 this->speckleRange, this->mode );
+
+	this->lambda = 8000;
+	this->sigma = 1.2;
+	this->wls_filter = createDisparityWLSFilter(this->left_sgbm);
+	this->right_sgbm = createRightMatcher(this->left_sgbm);
 
 }
 
@@ -115,8 +120,11 @@ void stereoPublisher::reconfigure_callback(camera_publisher::stereo_paramsConfig
 			{
 				if(config.mode == 0)
 					this->mode = StereoSGBM::MODE_SGBM;
-				else
+				else if(config.mode == 1)
 					this->mode = StereoSGBM::MODE_HH;
+				else if(config.mode == 2)
+					this->mode = StereoSGBM::MODE_SGBM_3WAY;
+
 				this->updateSGBM = true;
 			}
 
@@ -276,17 +284,20 @@ void stereoPublisher::stereoExtrinsicsCb(const camera_publisher::stereoExtrinsic
 Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 {
 	//-- And create the image in which we will save our disparities
-	Mat img_disparity16S = Mat( l_img.rows, l_img.cols, CV_16S );
-	Mat img_disparity8U = Mat( l_img.rows, l_img.cols, CV_8UC1 );
+	Mat img_disparity16S_L;
+	Mat img_disparity16S_R;
+	this->img_disparity8U_L = Mat( l_img.rows, l_img.cols, CV_8UC1 );
+	this->img_disparity8U_R = Mat( l_img.rows, l_img.cols, CV_8UC1 );
 
 	//-- Call the constructor for SGBM
 	if(this->updateSGBM)
 	{
 		cout << "Updating the stereo matching algorithm" << endl;
-		this->sgbm = StereoSGBM::create( this->minDisparities, this->maxDisparities, 
+		this->left_sgbm = StereoSGBM::create( this->minDisparities, this->maxDisparities, 
 										 this->blockSize, this->P1, this->P2, this->disp12MaxDiff, 
 										 this->preFilterCap, this->uniquenessRatio, 
 										 this->speckleRange, this->mode );
+		this->right_sgbm = createRightMatcher(this->left_sgbm);
 		this->updateSGBM = false;
 	}
 
@@ -294,27 +305,69 @@ Mat stereoPublisher::computeDisparity(Mat l_img, Mat r_img, bool visualize)
 	if( l_img.empty() || r_img.empty() )
 	{ 
 		std::cout<< " --(!) Empty images in computeDisparity " << std::endl;
-	 	return img_disparity8U; 
+	 	return this->img_disparity8U_L; 
 	}
 	else
 	{
-		//-- Calculate the disparity image
-		this->sgbm->compute( l_img, r_img, img_disparity16S );
+		// make a local copy of the images for filtering
+		Mat l_copy = l_img.clone();
+		Mat r_copy = r_img.clone();
 
+		//-- Calculate the disparity image
+		this->left_sgbm->compute( l_copy, r_copy, img_disparity16S_L );
+		this->right_sgbm->compute( r_copy, l_copy, img_disparity16S_R );
+
+		/*
 		//-- Check its extreme values
 		double minVal; double maxVal;
 		minMaxLoc( img_disparity16S, &minVal, &maxVal );
+		minMaxLoc( img_disparity16S, &minVal, &maxVal );
 		//printf("Min disp: %f Max value: %f \n", minVal, maxVal);
 
-		//-- Display it as a CV_8UC1 image
+		//-- Display it as a CV_8UC1 image (If you want to normalize it)
 		img_disparity16S.convertTo( img_disparity8U, CV_8UC1, 255/(maxVal - minVal));
+		*/
 
+		// do filtering
+		Mat filtered_disp, conf_map;
+		Rect conf_roi;
+		this->wls_filter->setLambda(this->lambda);
+		this->wls_filter->setSigmaColor(this->sigma);
+		this->wls_filter->filter(img_disparity16S_L, l_img,
+								filtered_disp,img_disparity16S_R);
+		this->img_disparity_filtered = filtered_disp;
+		getDisparityVis(this->img_disparity_filtered, this->img_filtered_disp_vis);
+
+		conf_map = wls_filter->getConfidenceMap();
+
+		// set the disparity images
+		img_disparity16S_L.convertTo( img_disparity8U_L, CV_8UC1);
+		img_disparity16S_R.convertTo( img_disparity8U_R, CV_8UC1);
+		this->img_disparity8U_L = img_disparity8U_L;
+		this->img_disparity8U_R = img_disparity8U_L;
+
+
+		// Get the ROI that was used in the last filter call:
+        conf_roi = wls_filter->getROI();
+
+		// upscale raw disparity and ROI back for a proper comparison:
+		resize(this->img_disparity8U_L,this->img_disparity8U_L,Size(),2.0,2.0);
+		this->img_disparity8U_L = this->img_disparity8U_L*2.0;
+		resize(this->img_disparity8U_R,this->img_disparity8U_R,Size(),2.0,2.0);
+		this->img_disparity8U_R = this->img_disparity8U_R*2.0;
+		conf_roi = Rect(conf_roi.x*2,conf_roi.y*2,conf_roi.width*2,conf_roi.height*2);
+		
 		if(visualize)
 		{
-			namedWindow( "disparity", WINDOW_NORMAL );
-			imshow( "disparity", img_disparity8U );
+			namedWindow( "disparity_left", WINDOW_NORMAL );
+			namedWindow( "disparity_right", WINDOW_NORMAL );
+			namedWindow( "disparity_filtered", WINDOW_NORMAL );
+			imshow( "disparity_left", this->img_disparity8U_L );
+			imshow( "disparity_right", this->img_disparity8U_R );
+			imshow( "disparity_filtered", this->img_filtered_disp_vis);
 		}
-		return img_disparity8U;
+
+		return filtered_disp;
 	}	
 }
 
@@ -448,10 +501,10 @@ Mat stereoPublisher::computeDepth(bool visualize)
 {	
 	// reprojectImageTo3D
 
-	this->img_depth = Mat::zeros(img_disparity8U.size(), CV_32FC3);
+	this->img_depth = Mat::zeros(this->img_disparity_filtered.size(), CV_32FC3);
 
 	cout << "Calculating depth" << endl;
-	reprojectImageTo3D(this->img_disparity8U, this->img_depth, this->stereo_extrinsics.Q, true);
+	reprojectImageTo3D(this->img_disparity_filtered, this->img_depth, this->stereo_extrinsics.Q, true);
 	cout << "Done" << endl;
 	
 	this->cloud->clear();
@@ -488,8 +541,8 @@ int main(int argc, char** argv)
 	while (waitKey(10) != 27)
 	{
 
-		sp.img_disparity8U = sp.computeDisparity(sp.img_left_gray, sp.img_right_gray, true);
-		sp.publishDisparity(sp.img_disparity8U);
+		sp.img_disparity_filtered = sp.computeDisparity(sp.img_left_gray, sp.img_right_gray, true);
+		sp.publishDisparity(sp.img_disparity_filtered);
 
 		sp.img_depth = sp.computeDepth(true);
 		
