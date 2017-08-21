@@ -71,21 +71,54 @@ void featureDetector::detect(cv::Mat img)
 
 			int max=0;
 			int min = INT_MAX;
-			for(int ki=0; ki<3; ki++)
+			for(int ii=1; ii<d1.rows-1; ii++)
 			{
-				for(int ji=0; ji<3; ji++)
+				for(int jj=1; jj<d1.cols-1; jj++)
 				{
-					if(d1[ki][kj] > max)
-					{
-						max = d1[ki][kj];
+					// compare relative to middle scale
+					int curr = d2.at<uchar>(ii, jj);
+					bool isMax = true;
 
+					if(curr > 0)
+					{
+						// check for first DoG image
+						for(int ki=-1; ki<1; ki++)
+						{
+							for(int kj=-1; kj<1; kj++)
+							{
+								if(d1.at<uchar>(ii+ki,jj+kj) >= curr)
+								{
+									isMax = false;
+									break;
+								}
+								if(d2.at<uchar>(ii+ki,jj+kj) > curr)
+								{
+									isMax = false;
+									break;
+								}
+								if(d3.at<uchar>(ii+ki,jj+kj) >= curr)
+								{
+									isMax = false;
+									break;
+								}
+							}
+							if(!isMax)
+								break;
+						}
 					}
+					
+					if(isMax)
+						res.at<uchar>(ii, jj) = 255;
 				}
+				
 			}
 
-			scale_extrema.push_back(diff);
+			imshow("extrema", res);
+			waitKey(-1);
+
+			scale_extrema.push_back(res);
 		}
-		dog.push_back(diffs);
+		extrema.push_back(scale_extrema);
 	}
 
 
