@@ -78,6 +78,7 @@ void featureDetector::detect(cv::Mat img)
 					// compare relative to middle scale
 					int curr = d2.at<uchar>(ii, jj);
 					bool isMax = true;
+					bool isMin = true;
 
 					if(curr > 0)
 					{
@@ -86,28 +87,27 @@ void featureDetector::detect(cv::Mat img)
 						{
 							for(int kj=-1; kj<1; kj++)
 							{
-								if(d1.at<uchar>(ii+ki,jj+kj) >= curr)
+								// check for local max
+								if(d1.at<uchar>(ii+ki,jj+kj) >= curr || d2.at<uchar>(ii+ki,jj+kj) > curr || d3.at<uchar>(ii+ki,jj+kj) >= curr)
 								{
 									isMax = false;
-									break;
+									//break;
 								}
-								if(d2.at<uchar>(ii+ki,jj+kj) > curr)
+								
+								// check for local min
+								if(d1.at<uchar>(ii+ki,jj+kj) <= curr || d2.at<uchar>(ii+ki,jj+kj) < curr || d3.at<uchar>(ii+ki,jj+kj) <= curr)
 								{
-									isMax = false;
-									break;
+									isMin = false;
+									//break;
 								}
-								if(d3.at<uchar>(ii+ki,jj+kj) >= curr)
-								{
-									isMax = false;
-									break;
-								}
+								
 							}
-							if(!isMax)
+							if(!isMax && !isMin)
 								break;
 						}
 					}
 					
-					if(isMax)
+					if(isMax || isMin)
 						res.at<uchar>(ii, jj) = 255;
 				}
 				
