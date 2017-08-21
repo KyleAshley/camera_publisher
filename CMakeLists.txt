@@ -150,6 +150,10 @@ include_directories(
 ## Declare a C++ executable
 add_executable(stereo_publisher src/stereo_publisher.cpp)
 add_executable(stereo_calib src/stereo_calib.cpp)
+add_executable(feature_detector src/feature_detect.cpp)
+
+
+add_dependencies(stereo_publisher ${catkin_EXPORTED_TARGETS})
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -167,6 +171,12 @@ target_link_libraries(stereo_publisher
 )
 
 target_link_libraries(stereo_calib
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBS}
+   ${PCL_LIBRARIES}
+)
+
+target_link_libraries(feature_detector
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
    ${PCL_LIBRARIES}

@@ -204,6 +204,7 @@ void stereoPublisher::reconfigure_callback(camera_publisher::stereo_paramsConfig
 			
 }
 
+// camera_info callback for left stereo camera
 void stereoPublisher::cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg)
 {
 // store the calibration parameters for the right camera
@@ -230,6 +231,7 @@ void stereoPublisher::cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg)
 	}
 }		
 
+// camera_info callback for right stereo camera
 void stereoPublisher::cameraInfoRightCb(const sensor_msgs::CameraInfo& msg)
 {
 	// store the calibration parameters for the right camera
@@ -256,7 +258,7 @@ void stereoPublisher::cameraInfoRightCb(const sensor_msgs::CameraInfo& msg)
 	}
 }	
 
-
+// subscribe to stereo extrinisc parameters (custom msg)
 void stereoPublisher::stereoExtrinsicsCb(const camera_publisher::stereoExtrinsics& msg)
 {
 	// store the calibration parameters for the right camera

@@ -1,8 +1,8 @@
 <launch>
 	
 	<!-- Launch the camera nodes -->
-	<node pkg="camera_publisher" type="camera_publisher_node.py" name="camera_left" args="camera_left 0" output="screen"/>
-	<node pkg="camera_publisher" type="camera_publisher_node.py" name="camera_right" args="camera_right 1" output="screen"/>
+	<node pkg="camera_publisher" type="camera_publisher_node.py" name="camera_left" args="camera_left 1" output="screen"/>
+	<node pkg="camera_publisher" type="camera_publisher_node.py" name="camera_right" args="camera_right 0" output="screen"/>
 	<node pkg="camera_publisher" type="camera_info_publisher.py" name="camera_left_info" args="/camera_left /home/kyle/Dropbox/catkin_ws/src/camera_publisher/doc/calibrationdata/left.yaml" output="screen"/>
 	<node pkg="camera_publisher" type="camera_info_publisher.py" name="camera_right_info" args="/camera_right /home/kyle/Dropbox/catkin_ws/src/camera_publisher/doc/calibrationdata/right.yaml" output="screen"/>
 	<node pkg="camera_publisher" type="stereo_extrinsic_publisher.py" name="stereo_extrinsics" args="/stereo /home/kyle/Dropbox/catkin_ws/src/camera_publisher/doc/calibrationdata/extrinsics.yml" output="screen"/>

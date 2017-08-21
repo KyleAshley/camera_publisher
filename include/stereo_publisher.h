@@ -33,6 +33,9 @@ using namespace cv::ximgproc;
 Stereo Publisher Class:
 	- subscribes to left and right RGB image topics
 	- computes disparity map and broadcasts results
+	 	- dispLeft		disparity image for left camera
+	 	- dispRight		disparity image for right camera
+	 	- pointCloud 	Registered RGBD point cloud 
 */
 
 struct calibrationData {
@@ -56,9 +59,14 @@ class stereoPublisher
 		// subs
 		ros::NodeHandle _nh;
 		image_transport::ImageTransport _it;
+
+		// subscribers for left and right RGB stereo cameras
 		image_transport::Subscriber _left_image_sub, _right_image_sub;
 
+		// subscribers for camera_info topics for each stereo camera
 		ros::Subscriber _left_info_sub, _right_info_sub;
+
+		// subscriber for stereo extrinisc info generated from camera calibration
 		ros::Subscriber _extrinsics_sub;
 
 		// pubs
@@ -105,13 +113,13 @@ class stereoPublisher
 
 		// ROS callbacks for left and right image topics etc.
 		void reconfigure_callback(camera_publisher::stereo_paramsConfig &config, uint32_t level);
-		void imageLeftCb(const sensor_msgs::ImageConstPtr& msg); 		// grab image data for left camera
-		void imageRightCb(const sensor_msgs::ImageConstPtr& msg);		// grad image data for right camera
-		void cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg);		// grab image calibration data for left camera
-		void cameraInfoRightCb(const sensor_msgs::CameraInfo& msg);		// grab image calibration data for right camera
+		void imageLeftCb(const sensor_msgs::ImageConstPtr& msg); 					// grab image data for left camera
+		void imageRightCb(const sensor_msgs::ImageConstPtr& msg);					// grad image data for right camera
+		void cameraInfoLeftCb(const sensor_msgs::CameraInfo& msg);					// grab image calibration data for left camera
+		void cameraInfoRightCb(const sensor_msgs::CameraInfo& msg);					// grab image calibration data for right camera
 		void stereoExtrinsicsCb(const camera_publisher::stereoExtrinsics& msg);		// grab stereo calibration data for right camera
 
-		// ROS publishers for the results
+		// ROS publishers for the disparity image
 		void publishDisparity(cv::Mat disp);
 
 		void createPointcloudFromRegisteredDepthImage(cv::Mat& depthImage, cv::Mat& rgbImage, cv::Mat& intrinsics);
