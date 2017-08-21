@@ -21,36 +21,47 @@
 #include <stdio.h>
 #include <math.h>
 #include <vector>
-#include "opencv2/xfeatures2d.hpp"
+#include <climits>
+#include <opencv2/opencv.hpp>
 
 using namespace cv;
 using namespace std;
 
-
+// custom implementation of SIFT feature detection
+// - uses opencv gaussian blur function 
 class featureDetector
 {
 
 
 	public:
 		// ctor / dtor
-		featureDetector();
+		featureDetector(int num_octaves, int num_levels);
 		~featureDetector();
 
+		// ROS subs
 
+		int num_octaves;		// number of resized levels in the scale space (recommeded = 4)
+		int num_levels;			// number of DoG blur levels in each octave (recommeded = 5)
+
+		cv::Mat img;	// original image
+
+
+		void detect(cv::Mat img);
 
 	private:
-		// pointer to an opencv feature detector
-		cv::Ptr<Feature2D> detector;	
+		// 2D vector of gaussian blurred images
+		// - cv::Mat img = gauss_octaves[octave][scale];
+		std::vector<std::vector<cv::Mat> >  octaves;
 
 		// keypoints from successive image frames
-		std::vector<KeyPoint> keypoints_1, keypoints_2;	
+		std::vector<KeyPoint> keypoints_1;
+
+
+
+
+
+
 
 
 };
 
-
-int main()
-{
-
-	return 0;
-}
