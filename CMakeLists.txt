@@ -5,7 +5,7 @@ project(camera_publisher)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
-		 cmake_modules REQUIRED
+	     cmake_modules REQUIRED
 	     rospy	
 	     roscpp
 	     cv_bridge
@@ -150,7 +150,7 @@ include_directories(
 ## Declare a C++ executable
 add_executable(stereo_publisher src/stereo_publisher.cpp)
 add_executable(stereo_calib src/stereo_calib.cpp)
-add_executable(feature_detector src/feature_detect.cpp)
+add_executable(sift_detector src/sift_detector.cpp)
 
 
 add_dependencies(stereo_publisher ${catkin_EXPORTED_TARGETS})
@@ -176,7 +176,7 @@ target_link_libraries(stereo_calib
    ${PCL_LIBRARIES}
 )
 
-target_link_libraries(feature_detector
+target_link_libraries(sift_detector
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
    ${PCL_LIBRARIES}
