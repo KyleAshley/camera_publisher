@@ -1,3 +1,20 @@
+#include <opencv/highgui.h>
+#include <opencv/cv.h>
+#include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
+
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include "opencv2/ximgproc/disparity_filter.hpp"
+
+#include <dynamic_reconfigure/server.h>
+
+#include <stdio.h>
+#include <math.h>
+#include <vector>
+#include <climits>
+
 #include "sift_detector.h"
 
 
@@ -16,7 +33,7 @@ SiftDetector::~SiftDetector()
 
 cv::Mat filter2D(cv::Mat)
 {
-	
+
 }
 
 
@@ -45,7 +62,7 @@ void SiftDetector::detect(cv::Mat img)
 
 
 	// approximate the LoG using DoG on scale space images
-	vector<vector<cv::Mat> > dog; 
+	vector<vector<cv::Mat> > dog; 					// stores DoG for each scale space image
 	for(int i=0; i<this->octaves.size(); i++)
 	{	 
 		vector<cv::Mat> diffs;
@@ -59,7 +76,7 @@ void SiftDetector::detect(cv::Mat img)
 	}
 
 	
-	vector<vector<cv::Mat> > extrema; 
+	vector<vector<cv::Mat> > extrema; 			// stores extreme values of DoG
 	for(int i=0; i<dog.size(); i++)
 	{	 
 		vector<cv::Mat> scale_extrema;
@@ -100,59 +117,90 @@ void SiftDetector::detect(cv::Mat img)
 						if(!isMax && !isMin)
 							break;
 					}
-					
+					// store a min/max value in the result mat
 					if(isMax || isMin)
 						res.at<uchar>(ii, jj) = 255;
+					else
+						res.at<uchar>(ii, jj) = 0;
 				}
 			}
-
 			scale_extrema.push_back(res);
 		}
 		extrema.push_back(scale_extrema);
 	}
 	
 
-	// remove useless features (along edges and low contrast)
+	// reject useless features (along edges and low contrast)
 	// keep only corners by calculating gradients at each pixel
 	// http://aishack.in/tutorials/sift-scale-invariant-feature-transform-keypoints/
-	// - Prewitt to estimate corners
+	vector<vector<cv::Mat> > corners; 			// stores strong corners
 	for(int i=0; i<extrema.size(); i++)
 	{	 
 		vector<cv::Mat> filtered_extrema;
-		for(int j=0; j<extrema[0].size(); j++)
+		for(int j=0; j<extrema[i].size(); j++)
 		{
 			// grab the gray image for gradient calculation
 			Mat gray = octaves[i][j];
 			Mat ext = extrema[i][j];
+			// TODO assert gray.size == ext.size
+			Mat dGray = gray.clone();
+			Mat res = Mat::zeros(extrema[i][j].size(), extrema[i][j].type());
+
+			imshow("gray", gray);
+			imshow("ext", ext);
+			cout << ext.type() << endl;
+
 			// iterate through the DoG image
 			for(int ii=1; ii<gray.rows-1; ii++)
 			{
 				for(int jj=1; jj<gray.cols-1; jj++)
 				{
+					//cout << ii << " " << jj << endl;
 					// calculate gradient for extrema only
-					if(ext[ii][jj] != 0)
+					if(ext.at<uchar>(ii,jj) != 0)
 					{
-						Mat sobel_x = (Mat_<uchar>(3,3) << 1, 0, -1, 2, 0, -2, 1, 0, -1);
-						Mat sobel_y = (Mat_<uchar>(3,3) << 1, 2, 1, 0, 0, 0, -1, -2, -1);
-						Mat prewitt_x = (Mat_<uchar>(3,3) << 1, 0, -1, 1, 0, -1, 1, 0, -1);
-						Mat prewitt_y = (Mat_<uchar>(3,3) << 1, 1, 1, 0, 0, 0, -1, -1, -1);
-						// check for first DoG image
-						for(int ki=-1; ki<1; ki++)
-						{
-							for(int kj=-1; kj<1; kj++)
-							{
+						//cout << ext[ii][jj] << endl;
+						Mat edge_kernel_x = (Mat_<int>(3,3) << 1, 0, -1, 2, 0, -2, 1, 0, -1);
+						Mat edge_kernel_y = (Mat_<int>(3,3) << 1, 2, 1, 0, 0, 0, -1, -2, -1);
+						// TODO assert rows == cols and sizex == sizey
 
+						int dx = 0, dy = 0;
+						// check for first DoG image
+						// i2/j2 index in local region of the image
+						// ki/kj index through the kernel
+						for(int ki=0, i2=-edge_kernel_x.rows/2; ki<edge_kernel_x.rows; ki++, i2++)
+						{
+							for(int kj=0, j2=-edge_kernel_x.rows/2; kj<edge_kernel_x.rows; kj++, j2++)
+							{	
+								//cout << ki << "," << kj << ": " << (int)edge_kernel_x.at<int>(ki, kj) << " " << (int)edge_kernel_y.at<int>(ki, kj) << " " << (int)gray.at<uchar>(ii+i2, jj+j2) << endl;
+								dx += (int)edge_kernel_x.at<int>(ki, kj) * (int)gray.at<uchar>(ii+i2, jj+j2);
+								dy += (int)edge_kernel_y.at<int>(ki, kj) * (int)gray.at<uchar>(ii+i2, jj+j2);
 							}
 						}
+						// compute products of the derivatives
+						double dx2 = dx * dx;
+						double dy2 = dy * dy;
+						double R = dx2/dy2;
+						
+						// store a min/max value in the result mat
+						if(R > 500)
+							res.at<uchar>(ii, jj) = 255;
+						else
+							res.at<uchar>(ii, jj) = 0;
 					}
 				}
 			}
 
-
+			imshow("filtered", res);
+			waitKey(-1);
+			filtered_extrema.push_back(res);
 		}
 
+		
+		corners.push_back(filtered_extrema);
 	}
-
+	
+	
 
 }
 
